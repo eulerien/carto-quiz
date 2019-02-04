@@ -1,0 +1,180 @@
+<html>
+  <meta charset="UTF-8">
+  <head>
+    <title>Carto Quiz</title>
+    <script type="text/javascript" src="js/config.js"></script>
+    <script type="text/javascript">
+
+
+      var map, wmsLayer, vectors;
+
+      $(document).ready(function () {
+          map = new ol.Map({
+              target: 'map',
+              view: new ol.View({
+                  center: ol.proj.transform([6.0, 45.0], 'EPSG:4326', 'EPSG:3857'),
+                  zoom: 2.0
+              })
+          });
+          //Map without borders
+          wmsLayer = new ol.layer.Image({
+              source: new ol.source.ImageWMS({
+                  url: "https://demo.boundlessgeo.com/geoserver/opengeo/wms",
+                  ratio: 1,
+                  params: {
+                      VERSION: "1.0.0",
+                      LAYERS: "opengeo:countries",
+                      FORMAT: "image/png"
+                  }
+              })
+          });
+          map.addLayer(wmsLayer);
+
+          var boundariesLayer = new ol.layer.Vector({
+              source: new ol.source.Vector({
+                  format: new ol.format.GeoJSON(),
+                  url: 'https://raw.githubusercontent.com/openlayers/ol3/6838fdd4c94fe80f1a3c98ca92f84cf1454e232a/examples/data/geojson/countries.geojson'
+              })
+          });
+          map.addLayer(boundariesLayer);
+
+          vectorLayer = new ol.layer.Vector({
+              source: new ol.source.Vector(),
+              style: onClickStyle
+          });
+          map.addLayer(vectorLayer);
+
+          //Country selected turns red
+          function onClickStyle(feature){
+            var style = new ol.style.Style({
+              fill: new ol.style.Fill({
+                color: 'red',
+              })
+            });
+            return [style];
+          }
+
+          map.on('singleclick', function (evt) {
+
+              var wmsSource = wmsLayer.getSource();
+
+              // WMS GetFeatureInfo request generator
+              var url = wmsSource.getGetFeatureInfoUrl(
+                  // clic context
+                  evt.coordinate,
+                  // map context
+                  map.getView().getResolution(),
+                  "EPSG:3857",
+                  {
+                      INFO_FORMAT: "application/json"
+                  }
+              );
+              if (url) getFeatureInfo(url);
+          });
+
+          /***
+           * initMyLayerSwitcher: a first attempt to manage baselayers and overlayers.
+           *
+           * Remark: in the current state, the main drawback is that it is absolutly
+           * not flexible and adaptative!
+           *
+           * @returns {undefined}
+           */
+          function initMyLayerSwitcher(){
+
+              // Set visibility of the layers
+              wmsLayer.setVisible(true);
+              boundariesLayer.setVisible(false);
+
+              // Changes the visibility of the layers (set the difficulty)
+              $("#base").change(function (e) {
+                  // Reset all baselayers
+                  wmsLayer.setVisible(true);
+                  boundariesLayer.setVisible(false);
+
+                  // Activate the one that is selected (based on index)
+                  var idxVisible = $(this).find(":selected").index();
+                  if(idxVisible == 0){
+                    wmsLayer.setVisible(true);
+                  } else if(idxVisible == 1){
+                    boundariesLayer.setVisible(true);
+                  }
+              });
+          }
+          initMyLayerSwitcher();
+      });
+      //Game function
+
+      console.log(score);
+      function getFeatureInfo(url) {
+          var request = $.ajax({
+              url: url,
+              dataType: "json"
+          });
+          request.done(function (data) {
+              decoder = new ol.format.GeoJSON();
+              features = decoder.readFeatures(data);
+
+              if (features.length > 0) {
+                  if ((features[0].get("pop_est") > 125000000)) {
+                      score++;
+                      $("#info").html("Population: " + features[0].get("pop_est"));
+                      vectorLayer.getSource().addFeatures(features);
+                      console.log(score);
+                      console.log(features);
+                      if (score == 5) {
+                        alert("Vous avez trouvé les 5 pays les plus peuplés de la planète! Il s'agit, dans l'ordre de: La Chine, l'Inde, Les USA, L'Indonésie et le Pakistan. Bravo!!! ")
+                      }
+                  }   else {
+                      alert("Mauvais pays.. Essayez encoe!");
+                      vectorLayer.getSource().clear();
+                      score = 0;
+                  }
+              }
+          });
+          request.fail(function (jqXHR, textStatus) {
+              alert("Request failed: " + textStatus);
+          });
+      }
+
+    </script>
+
+    <style type="text/css">
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 60px;
+            background-color: white;
+            border: solid gray 1px;
+            padding: 5px;
+            font-size: smaller;
+            z-index: 1000000000;
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 60px;
+            background-color: white;
+            border: solid green 1px;
+            padding: 5px;
+            font-size: smaller;
+            z-index: 1000000000;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="info">Select the top 5 coutries with the highest population</div>
+    <div>
+      <h5>Choose difficulty</h5>
+      <select id="base">
+          <option value="base1">No borders</option>
+          <option value="base2">Borders</option>
+      </select>
+    </div>
+  </body>
+</html>
