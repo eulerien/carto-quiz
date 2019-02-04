@@ -104,8 +104,7 @@
           initMyLayerSwitcher();
       });
       //Game function
-
-      console.log(score);
+      var score;
       function getFeatureInfo(url) {
           var request = $.ajax({
               url: url,
@@ -120,8 +119,6 @@
                       score++;
                       $("#info").html("Population: " + features[0].get("pop_est"));
                       vectorLayer.getSource().addFeatures(features);
-                      console.log(score);
-                      console.log(features);
                       if (score == 5) {
                         alert("Vous avez trouvé les 5 pays les plus peuplés de la planète! Il s'agit, dans l'ordre de: La Chine, l'Inde, Les USA, L'Indonésie et le Pakistan. Bravo!!! ")
                       }
